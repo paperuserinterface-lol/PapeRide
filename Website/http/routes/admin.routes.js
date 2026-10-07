@@ -21,7 +21,8 @@ const {
   assertVehicleModel,
   assertLicensePlate,
 } = require('../../utils/validation');
-const { ValidationError, ConflictError } = require('../../utils/errors');
+const { ValidationError, ConflictError, NotFoundError } = require('../../utils/errors');
+const { transaction } = require('../../db');
 const io = require('../../realtime/io');
 const events = require('../../realtime/ride.events');
 const { serialiseRide, serialiseDriver } = require('../../realtime/snapshots');
@@ -38,6 +39,88 @@ router.get('/overview', async (_req, res, next) => {
     const { buildAdminSnapshot } = require('../../realtime/snapshots');
     const snapshot = await buildAdminSnapshot();
     res.json({ ...snapshot, sockets: { connected: io.connectedSessionCount(), byRole: io.sessionsByRole() } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** GET /api/admin/applications */
+router.get('/applications', async (_req, res, next) => {
+  try {
+    res.json({ applications: await systemLogs.listDriverApplications() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** POST /api/admin/applications/:id/decision { decision: "accepted" | "rejected" } */
+router.post('/applications/:id/decision', async (req, res, next) => {
+  try {
+    const applicationId = String(req.params.id || '');
+    if (!/^[1-9]\d{0,17}$/.test(applicationId)) {
+      throw new ValidationError('Invalid application id');
+    }
+    const decision = assertOneOf(req.body && req.body.decision, ['accepted', 'rejected'], 'decision');
+
+    const application = await transaction(async (client) => {
+      const applicationResult = await client.query(
+        `SELECT id, actor_id, entity_id, details
+           FROM system_logs
+          WHERE id = $1 AND event = 'driver.application'
+          FOR UPDATE`,
+        [applicationId]
+      );
+      const record = applicationResult.rows[0];
+      if (!record) throw new NotFoundError('Driver application not found');
+      if (!record.actor_id || record.actor_id !== record.entity_id) {
+        throw new ConflictError('The applicant account no longer exists');
+      }
+
+      const existingDecision = await client.query(
+        `SELECT 1
+           FROM system_logs
+          WHERE event = 'driver.application_decision'
+            AND details->>'applicationId' = $1
+          LIMIT 1`,
+        [applicationId]
+      );
+      if (existingDecision.rowCount) {
+        throw new ConflictError('This application has already been reviewed');
+      }
+
+      const userResult = await client.query(
+        'SELECT id, role FROM users WHERE id = $1 FOR UPDATE',
+        [record.actor_id]
+      );
+      const user = userResult.rows[0];
+      if (!user) throw new NotFoundError('Applicant account no longer exists');
+
+      if (decision === 'accepted') {
+        if (user.role !== 'user') throw new ConflictError('Applicant is no longer a rider account');
+        const vehicleModel = assertVehicleModel(record.details && record.details.vehicleModel);
+        const licensePlate = assertLicensePlate(record.details && record.details.licensePlate);
+        await client.query("UPDATE users SET role = 'driver' WHERE id = $1", [user.id]);
+        await client.query(
+          `INSERT INTO driver_profiles (driver_id, vehicle_model, license_plate, status)
+           VALUES ($1, $2, $3, 'offline')`,
+          [user.id, vehicleModel, licensePlate]
+        );
+      }
+
+      await client.query(
+        `INSERT INTO system_logs (actor_id, actor_role, event, entity_id, level, details)
+         VALUES ($1, 'admin', 'driver.application_decision', $2, $3, $4::jsonb)`,
+        [
+          req.identity.id,
+          user.id,
+          decision === 'rejected' ? 'warn' : 'info',
+          JSON.stringify({ applicationId, decision }),
+        ]
+      );
+      return { id: applicationId, decision, userId: user.id };
+    });
+
+    res.json({ application });
   } catch (err) {
     next(err);
   }

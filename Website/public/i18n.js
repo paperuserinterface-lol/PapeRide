@@ -159,6 +159,17 @@
     'Drivers': 'Водители',
     'Rides': 'Поездки',
     'Applications': 'Заявки',
+    'Accept application': 'Принять заявку',
+    'Reject application': 'Отклонить заявку',
+    'Application accepted': 'Заявка принята',
+    'Application rejected': 'Заявка отклонена',
+    'Application review failed': 'Не удалось обработать заявку',
+    'Accept this application? The rider account will become a driver account.':
+      'Принять заявку? Аккаунт пассажира станет аккаунтом водителя.',
+    'Reject this driver application?': 'Отклонить эту заявку водителя?',
+    'The applicant can now sign in through the Driver console with their existing account.':
+      'Заявитель теперь может войти в консоль водителя со своей текущей учётной записью.',
+    'The rider account remains unchanged.': 'Аккаунт пассажира останется без изменений.',
     'System logs': 'Системные журналы',
     'Password (8+ characters)': 'Пароль (8+ символов)',
     'Vehicle model (driver)': 'Модель автомобиля (водитель)',
@@ -198,6 +209,8 @@
 
     /* statuses + roles */
     'assigned': 'назначен',
+    'accepted': 'принята',
+    'rejected': 'отклонена',
     'in_progress': 'в пути',
     'completed': 'завершена',
     'cancelled': 'отменена',
@@ -456,6 +469,17 @@
     'Drivers': 'Haydovchilar',
     'Rides': 'Sayohatlar',
     'Applications': 'Arizalar',
+    'Accept application': 'Arizani qabul qilish',
+    'Reject application': 'Arizani rad etish',
+    'Application accepted': 'Ariza qabul qilindi',
+    'Application rejected': 'Ariza rad etildi',
+    'Application review failed': 'Arizani ko‘rib chiqib bo‘lmadi',
+    'Accept this application? The rider account will become a driver account.':
+      'Ariza qabul qilinsinmi? Yo‘lovchi hisobi haydovchi hisobiga aylanadi.',
+    'Reject this driver application?': 'Haydovchi arizasi rad etilsinmi?',
+    'The applicant can now sign in through the Driver console with their existing account.':
+      'Ariza beruvchi mavjud hisobi bilan Haydovchi konsoliga kirishi mumkin.',
+    'The rider account remains unchanged.': 'Yo‘lovchi hisobi o‘zgarishsiz qoladi.',
     'System logs': 'Tizim jurnallari',
     'Password (8+ characters)': 'Parol (8+ belgi)',
     'Vehicle model (driver)': 'Avtomobil modeli (haydovchi)',
@@ -495,6 +519,8 @@
 
     /* statuses + roles */
     'assigned': 'biriktirildi',
+    'accepted': 'qabul qilindi',
+    'rejected': 'rad etildi',
     'in_progress': 'yo\'lda',
     'completed': 'tugallandi',
     'cancelled': 'bekor qilindi',

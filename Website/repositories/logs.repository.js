@@ -112,6 +112,51 @@ async function list({ limit = 200, level = null, event = null } = {}) {
   );
 }
 
+async function listDriverApplications(limit = 200) {
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 1000));
+  return queryMany(
+    `SELECT application.id, application.actor_id, application.entity_id,
+            application.details, application.created_at,
+            applicant.full_name AS actor_name,
+            COALESCE(decision.details->>'decision', 'pending') AS status,
+            decision.created_at AS decided_at,
+            decision_actor.full_name AS decided_by
+       FROM system_logs application
+       LEFT JOIN users applicant ON applicant.id = application.actor_id
+       LEFT JOIN LATERAL (
+         SELECT l.details, l.actor_id, l.created_at
+           FROM system_logs l
+          WHERE l.event = 'driver.application_decision'
+            AND l.details->>'applicationId' = application.id::text
+          ORDER BY l.id DESC
+          LIMIT 1
+       ) decision ON true
+       LEFT JOIN users decision_actor ON decision_actor.id = decision.actor_id
+      WHERE application.event = 'driver.application'
+      ORDER BY application.created_at DESC, application.id DESC
+      LIMIT ${safeLimit}`
+  );
+}
+
+async function hasPendingDriverApplication(userId) {
+  const row = await queryOne(
+    `SELECT EXISTS (
+       SELECT 1
+         FROM system_logs application
+        WHERE application.event = 'driver.application'
+          AND application.actor_id = $1
+          AND NOT EXISTS (
+            SELECT 1
+              FROM system_logs decision
+             WHERE decision.event = 'driver.application_decision'
+               AND decision.details->>'applicationId' = application.id::text
+          )
+     ) AS pending`,
+    [userId]
+  );
+  return row.pending;
+}
+
 async function recentEvents() {
   return queryMany(
     `SELECT event, COUNT(*)::int AS total FROM system_logs GROUP BY event ORDER BY total DESC LIMIT 20`
@@ -125,4 +170,12 @@ async function drain() {
   }
 }
 
-module.exports = { log, logSync, list, recentEvents, drain };
+module.exports = {
+  log,
+  logSync,
+  list,
+  listDriverApplications,
+  hasPendingDriverApplication,
+  recentEvents,
+  drain,
+};

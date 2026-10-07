@@ -32,8 +32,7 @@ router.post('/', authenticate, requireFreshIdentity, async (req, res, next) => {
     const rawNote = typeof body.note === 'string' ? body.note.trim() : '';
     const note = rawNote ? rawNote.slice(0, 500) : null;
 
-    const recent = await systemLogs.list({ event: EVENT, limit: 500 });
-    if (recent.some((row) => row.actor_id === user.id)) {
+    if (await systemLogs.hasPendingDriverApplication(user.id)) {
       throw new ConflictError('You already have an application pending review');
     }
 

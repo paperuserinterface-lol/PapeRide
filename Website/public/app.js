@@ -85,6 +85,7 @@
     admin: { table: 'users', overview: null }
   };
   var authRole = 'user';
+  var headerAccountRole = null;
 
   /* ------------------------------------------------------------------- API */
   function api(path, options) {
@@ -99,7 +100,9 @@
       return res.json().catch(function () { return {}; }).then(function (body) {
         if (!res.ok) {
           var message = body && body.error && body.error.message ? body.error.message : ('HTTP ' + res.status);
-          throw new Error(message);
+          var error = new Error(message);
+          error.status = res.status;
+          throw error;
         }
         return body;
       });
@@ -375,6 +378,7 @@
           return null;
         }
         state.sessions[role] = { token: session.token, user: session.user, socket: null };
+        persistSession(role, session.token);
         state.role = role;
         updateRoleAccessUI();
         go(ROLE_ROUTES[role]);
@@ -396,6 +400,7 @@
       body: { full_name: fullName, phone_number: phone, password: password }
     }).then(function (session) {
       state.sessions.user = { token: session.token, user: session.user, socket: null };
+      persistSession('user', session.token);
       state.role = 'user';
       updateRoleAccessUI();
       go(ROLE_ROUTES.user);
@@ -410,10 +415,51 @@
     });
   }
 
-  function logout(role) {
+  var SESSION_STORAGE_PREFIX = 'paperide.auth.v1.';
+
+  function persistSession(role, token) {
+    try {
+      window.localStorage.setItem(SESSION_STORAGE_PREFIX + role, token);
+    } catch (err) {
+      toast(t('Session not saved'), t('You may need to sign in again after reloading this page.'), 'warn');
+      logEvent(t('session could not be saved: {message}', { message: err.message }), true);
+    }
+  }
+
+  function restoreSession(role, token) {
+    return api('/api/auth/me', { token: token }).then(function (data) {
+      if (!data.user || data.user.role !== role) {
+        window.localStorage.removeItem(SESSION_STORAGE_PREFIX + role);
+        logEvent(t('saved {role} session does not match its account; sign in again', { role: role }), true);
+        return;
+      }
+      state.sessions[role] = { token: token, user: data.user, socket: null };
+      updateRoleAccessUI();
+      if (routeForHash() === ROLE_ROUTES[role]) navigate();
+      openSocket(role);
+    }).catch(function (err) {
+      if (err.status === 401 || err.status === 403) {
+        window.localStorage.removeItem(SESSION_STORAGE_PREFIX + role);
+        logEvent(t('saved {role} session expired; sign in again', { role: role }), true);
+      } else {
+        toast(t('Could not restore session'), err.message, 'error');
+        logEvent(t('could not restore {role} session: {message}', { role: role, message: err.message }), true);
+      }
+    });
+  }
+
+  function restoreSavedSessions() {
+    ['user', 'driver', 'operator', 'admin'].forEach(function (role) {
+      var token = window.localStorage.getItem(SESSION_STORAGE_PREFIX + role);
+      if (token) restoreSession(role, token);
+    });
+  }
+
+  function logout(role, fromStorageEvent) {
     var session = state.sessions[role];
     if (session && session.socket) session.socket.disconnect();
     if (role === 'driver') stopDeviceGps();
+    if (!fromStorageEvent) window.localStorage.removeItem(SESSION_STORAGE_PREFIX + role);
     delete state.sessions[role];
     renderSessionUI(role);
     var nextRole = state.sessions.user ? 'user'
@@ -459,6 +505,9 @@
     socket.on('connect_error', function (err) {
       logEvent('[' + role + '] connect error: ' + (err && err.message), true);
       if (role === state.role) setConnection('off', 'auth failed');
+      if (err && /account no longer exists|role has changed/i.test(err.message || '')) {
+        logout(role);
+      }
     });
 
     socket.on('server:error', function (payload) {
@@ -1099,7 +1148,8 @@
     var session = state.sessions.admin;
     if (!session) return;
     api('/api/admin/overview', { token: session.token }).then(function (data) {
-      state.admin.overview = data;
+      var applications = state.admin.overview && state.admin.overview.applications;
+      state.admin.overview = Object.assign({}, data, applications ? { applications: applications } : {});
       renderAdminStats();
       renderAdminTable();
     }).catch(function (err) {
@@ -1188,16 +1238,26 @@
       rows: function (data) { return data.logs || []; }
     },
     applications: {
-      columns: ['time', 'applicant', 'phone', 'vehicle', 'plate', 'note'],
+      columns: ['time', 'applicant', 'phone', 'vehicle', 'plate', 'note', 'status', 'actions'],
       render: function (l) {
         var d = l.details || {};
+        var status = l.status || 'pending';
+        var actions = status === 'pending'
+          ? '<button class="btn small primary" data-application-id="' + esc(l.id) + '" data-application-decision="accepted">' +
+              t('Accept application') + '</button> ' +
+            '<button class="btn small danger" data-application-id="' + esc(l.id) + '" data-application-decision="rejected">' +
+              t('Reject application') + '</button>'
+          : '';
         return [
           '<span class="mono">' + new Date(l.created_at).toLocaleString() + '</span>',
           esc(d.fullName || l.actor_name || '—'),
           '<span class="mono">' + esc(d.phoneNumber || '') + '</span>',
           esc(d.vehicleModel || ''),
           '<span class="mono">' + esc(d.licensePlate || '') + '</span>',
-          esc(d.note || '')
+          esc(d.note || ''),
+          '<span class="badge ' + (status === 'accepted' ? 'assigned' : status === 'rejected' ? 'cancelled' : 'pending') + '">' +
+            esc(t(status)) + '</span>',
+          actions
         ];
       },
       rows: function (data) { return data.applications || []; }
@@ -1208,13 +1268,39 @@
   function loadDriverApplications() {
     var session = state.sessions.admin;
     if (!session) return;
-    api('/api/admin/logs?event=driver.application', { token: session.token })
+    api('/api/admin/applications', { token: session.token })
       .then(function (data) {
         if (!state.admin.overview) state.admin.overview = {};
-        state.admin.overview.applications = data.logs || [];
+        state.admin.overview.applications = data.applications || [];
         renderAdminTable();
       })
       .catch(function (err) { toast(t('Applications failed'), err.message, 'error'); });
+  }
+
+  function decideDriverApplication(applicationId, decision) {
+    var session = state.sessions.admin;
+    if (!session) return;
+    var confirmMessage = decision === 'accepted'
+      ? t('Accept this application? The rider account will become a driver account.')
+      : t('Reject this driver application?');
+    if (!window.confirm(confirmMessage)) return;
+    api('/api/admin/applications/' + encodeURIComponent(applicationId) + '/decision', {
+      method: 'POST',
+      token: session.token,
+      body: { decision: decision }
+    }).then(function () {
+      toast(
+        decision === 'accepted' ? t('Application accepted') : t('Application rejected'),
+        decision === 'accepted'
+          ? t('The applicant can now sign in through the Driver console with their existing account.')
+          : t('The rider account remains unchanged.'),
+        decision === 'accepted' ? 'success' : 'warn'
+      );
+      loadAdminOverview();
+      loadDriverApplications();
+    }).catch(function (err) {
+      toast(t('Application review failed'), err.message, 'error');
+    });
   }
 
   function renderAdminTable() {
@@ -1265,7 +1351,8 @@
     var roles = Object.keys(state.sessions);
     var hasSession = roles.length > 0;
     var userSession = !!state.sessions.user;
-    var activeSession = state.sessions[state.role];
+    headerAccountRole = state.sessions[state.role] ? state.role : (roles[0] || null);
+    var activeSession = headerAccountRole ? state.sessions[headerAccountRole] : null;
 
     show('#auth-actions', !activeSession);
     show('#account-actions', !!activeSession);
@@ -1473,6 +1560,13 @@
       });
     });
     window.addEventListener('hashchange', navigate);
+    window.addEventListener('storage', function (event) {
+      if (!event.key || event.key.indexOf(SESSION_STORAGE_PREFIX) !== 0) return;
+      var role = event.key.slice(SESSION_STORAGE_PREFIX.length);
+      if (['user', 'driver', 'operator', 'admin'].indexOf(role) === -1) return;
+      if (event.newValue) restoreSession(role, event.newValue);
+      else if (state.sessions[role]) logout(role, true);
+    });
 
     $('#open-login').addEventListener('click', function () {
       openAuthModal('login', state.role);
@@ -1522,7 +1616,7 @@
     $('#apply-form').addEventListener('submit', submitDriverApplication);
 
     $('#header-signout').addEventListener('click', function () {
-      if (state.sessions[state.role]) logout(state.role);
+      if (headerAccountRole) logout(headerAccountRole);
     });
 
     // logins
@@ -1640,8 +1734,14 @@
     $('#ad-tbody').addEventListener('click', function (e) {
       var del = e.target.getAttribute && e.target.getAttribute('data-del');
       var cancel = e.target.getAttribute && e.target.getAttribute('data-cancel-ride');
+      var applicationId = e.target.getAttribute && e.target.getAttribute('data-application-id');
+      var applicationDecision = e.target.getAttribute && e.target.getAttribute('data-application-decision');
       var session = state.sessions.admin;
       if (!session) return;
+      if (applicationId && ['accepted', 'rejected'].indexOf(applicationDecision) !== -1) {
+        decideDriverApplication(applicationId, applicationDecision);
+        return;
+      }
       if (del) {
         if (!window.confirm(t('Delete this account? Related rides keep their history.'))) return;
         api('/api/admin/users/' + del, { method: 'DELETE', token: session.token })
@@ -1740,6 +1840,7 @@
     setConnection('', t('connecting…'));
     navigate();
     logEvent(t('TBRide client ready · sign in or create a rider account'));
+    restoreSavedSessions();
     // keep the health indicator honest
     updateHealth();
     setInterval(updateHealth, 15000);
