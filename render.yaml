@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: paperide-website
+    runtime: node
+    plan: free
+    rootDir: Website
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TELEGRAM_INTERNAL_TOKEN
+        generateValue: true

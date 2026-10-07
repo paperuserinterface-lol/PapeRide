@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TBRide — Ride-Hailing &amp; Operator Dispatch</title>
+  <meta name="description" content="TBRide: vanilla JS ride-hailing and operator dispatch platform (Node.js + Express + Socket.IO + PostgreSQL + Leaflet)" />
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="/styles.css?v=production-ui" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="TBRide home">
+      <span class="brand-mark">TB</span>
+      <span class="brand-copy">
+        <strong>TBRide</strong>
+        <small>Ride-hailing &amp; operator dispatch · Tashkent</small>
+      </span>
+    </a>
+
+    <nav class="main-nav" id="main-nav" aria-label="Main navigation">
+      <a class="nav-link" href="#/" data-page="home">Home</a>
+      <a class="nav-link role-tab is-active" href="#/rider" data-role="user" data-page="user">Rider</a>
+      <a class="nav-link role-tab" href="#/driver" data-role="driver" data-page="driver">Driver</a>
+      <a class="nav-link role-tab" href="#/operator" data-role="operator" data-page="operator">Operator</a>
+      <a class="nav-link role-tab" href="#/admin" data-role="admin" data-page="admin">Admin</a>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="auth-actions" id="auth-actions">
+        <button class="btn ghost" id="open-login" type="button">Log In</button>
+        <button class="btn primary" id="open-signup" type="button">Sign Up</button>
+      </div>
+      <div class="account-actions hidden" id="account-actions">
+        <span class="account-first-name" id="account-first-name"></span>
+        <button class="btn ghost" id="header-signout" type="button">Sign Out</button>
+      </div>
+      <div class="lang-switch" id="lang-switch" role="group" aria-label="Language">
+        <button class="lang-btn is-active" data-lang="en" type="button">EN</button>
+        <button class="lang-btn" data-lang="ru" type="button">RU</button>
+        <button class="lang-btn" data-lang="uz" type="button">UZ</button>
+      </div>
+
+      <div class="conn" id="conn">
+        <span class="dot" id="conn-dot"></span>
+        <span id="conn-text">idle</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="app">
+    <!-- ============================== HOME =============================== -->
+    <section class="page page-home" id="page-home">
+      <div class="hero">
+        <div class="hero-copy">
+          <span class="eyebrow">Tashkent · live operator dispatch</span>
+          <h1>Move across the city with confidence</h1>
+          <p class="lead">TBRide puts riders, drivers and operators on one live board: request a trip, watch it get dispatched in real time and follow every ride on the map.</p>
+          <div class="hero-actions">
+            <a class="btn primary lg" href="#/rider">Book a ride</a>
+            <button class="btn ghost lg" id="hero-become-driver" type="button">Become a Driver</button>
+          </div>
+          <ul class="hero-points">
+            <li>Live dispatch board for operators</li>
+            <li>GPS tracking for every trip</li>
+            <li>English, Русский and O‘zbekcha</li>
+          </ul>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="art-map"></div>
+          <div class="art-card art-a"><b>4</b><span>role consoles</span></div>
+          <div class="art-card art-b"><b>GPS</b><span>live ride tracking</span></div>
+          <div class="art-card art-c"><b>3</b><span>languages</span></div>
+        </div>
+      </div>
+
+      <div class="section" id="console-directory">
+        <div class="section-head">
+          <h2>One platform, four consoles</h2>
+          <p>Pick the workspace that matches your role — every console is purpose-built.</p>
+        </div>
+        <div class="role-grid">
+          <a class="role-card" data-console-role="user" href="#/rider">
+            <span class="role-card-icon">🛵</span>
+            <h3>Rider</h3>
+            <p>Set pickup and destination on the map, get an instant fare estimate and track your driver live.</p>
+            <span class="role-card-cta">Open console</span>
+          </a>
+          <a class="role-card" data-console-role="driver" href="#/driver">
+            <span class="role-card-icon">🚗</span>
+            <h3>Driver</h3>
+            <p>Go online, receive ride offers and manage a trip from arrival to completion.</p>
+            <span class="role-card-cta">Open console</span>
+          </a>
+          <a class="role-card" data-console-role="operator" href="#/operator">
+            <span class="role-card-icon">🎛️</span>
+            <h3>Operator</h3>
+            <p>Dispatch pending rides with drag &amp; drop, watch the fleet and keep the board moving.</p>
+            <span class="role-card-cta">Open console</span>
+          </a>
+          <a class="role-card" data-console-role="admin" href="#/admin">
+            <span class="role-card-icon">🛡️</span>
+            <h3>Admin</h3>
+            <p>Manage accounts, review drivers and rides, and audit every event in the system log.</p>
+            <span class="role-card-cta">Open console</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>How it works</h2>
+          <p>Three steps from request to arrival.</p>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <span class="step-num">1</span>
+            <h3>Set your route</h3>
+            <p>Drop the pickup and destination pins on the map — the fare estimate updates instantly.</p>
+          </div>
+          <div class="step">
+            <span class="step-num">2</span>
+            <h3>Operators dispatch</h3>
+            <p>Your request lands on the live board and is assigned to the nearest available driver.</p>
+          </div>
+          <div class="step">
+            <span class="step-num">3</span>
+            <h3>Follow the ride</h3>
+            <p>Watch the driver approach in real time and get an update at every stage of the trip.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="cta-band">
+          <div>
+            <h2>Drive with TBRide</h2>
+            <p>Bring your car, pass the checks and start earning on the Tashkent dispatch network.</p>
+          </div>
+          <button class="btn primary lg" id="home-become-driver" type="button">Become a Driver</button>
+        </div>
+      </div>
+
+      <footer class="page-foot">
+        <span>TBRide · Tashkent</span>
+        <span>Node.js · Express · Socket.IO · PostgreSQL · Leaflet</span>
+      </footer>
+    </section>
+
+    <!-- ========================= ROLE CONSOLES ========================== -->
+    <div class="layout hidden" id="console-layout">
+    <!-- ============================ SIDEBAR ============================ -->
+    <aside class="sidebar">
+
+      <!-- ------------------------- RIDER PANEL ------------------------- -->
+      <section class="panel is-active" id="panel-user">
+        <div class="page-head">
+          <span class="page-icon">🛵</span>
+          <div class="page-head-copy">
+            <h2>Rider console</h2>
+            <p class="hint">Request a trip, set your route on the map and follow your driver live.</p>
+          </div>
+          <button class="btn accent" id="rider-become-driver" type="button">Become a Driver</button>
+        </div>
+
+        <div class="card session-card hidden" id="rider-session">
+          <div class="session-head">
+            <div>
+              <span class="badge" id="rider-status-badge">idle</span>
+              <strong id="rider-name">—</strong>
+            </div>
+          </div>
+          <p class="hint">Drag the markers on the map, or use the placement buttons below.</p>
+
+          <div class="row gap">
+            <button class="btn small" id="rider-mode-pickup" type="button">Set pickup</button>
+            <button class="btn small" id="rider-mode-dropoff" type="button">Set destination</button>
+          </div>
+
+          <dl class="kv">
+            <div><dt>Pickup</dt><dd id="rider-pickup-coords">41.299500, 69.240100</dd></div>
+            <div><dt>Destination</dt><dd id="rider-dropoff-coords">41.311100, 69.279700</dd></div>
+            <div><dt>Distance</dt><dd id="rider-quote-distance">—</dd></div>
+            <div><dt>Fare (est.)</dt><dd id="rider-quote-fare">—</dd></div>
+          </dl>
+
+          <div class="row gap">
+            <button class="btn primary grow" id="rider-request-btn" type="button">Request ride</button>
+            <button class="btn danger grow" id="rider-cancel-btn" type="button" disabled>Cancel ride</button>
+          </div>
+
+          <div class="ride-card hidden" id="rider-driver-card">
+            <h3>Assigned driver</h3>
+            <p id="rider-driver-name">—</p>
+            <p class="hint" id="rider-driver-vehicle">—</p>
+            <p class="mono" id="rider-driver-phone">—</p>
+          </div>
+
+          <h3>Ride history</h3>
+          <ul class="list" id="rider-history"></ul>
+        </div>
+      </section>
+
+      <!-- ------------------------ OPERATOR PANEL ----------------------- -->
+      <section class="panel" id="panel-operator">
+        <div class="page-head">
+          <span class="page-icon">🎛️</span>
+          <div class="page-head-copy">
+            <h2>Operator dispatch</h2>
+            <p class="hint">Run the live board: assign pending rides to drivers with drag &amp; drop.</p>
+          </div>
+        </div>
+
+        <div class="card session-card hidden" id="op-session">
+          <div class="session-head">
+            <div><strong id="op-name">—</strong><span class="badge" id="op-badge">operator</span></div>
+          </div>
+
+          <div class="stat-row">
+            <div class="stat"><b id="op-count-pending">0</b><span>pending</span></div>
+            <div class="stat"><b id="op-count-live">0</b><span>live</span></div>
+            <div class="stat"><b id="op-count-drivers">0</b><span>drivers</span></div>
+          </div>
+
+          <div class="drop-help">
+            <b>Drag &amp; drop dispatch</b>
+            Drag a pending ride card onto a driver marker on the map, or onto a row
+            in the online driver list. You can also click a card and then click a
+            driver marker.
+          </div>
+
+          <h3>Pending rides <span class="pill" id="op-pending-pill">0</span></h3>
+          <ul class="list dropzone" id="op-pending"></ul>
+
+          <h3>Live rides <span class="pill" id="op-live-pill">0</span></h3>
+          <ul class="list" id="op-live"></ul>
+
+          <h3>Online drivers <span class="pill" id="op-drivers-pill">0</span></h3>
+          <ul class="list" id="op-drivers"></ul>
+        </div>
+      </section>
+
+      <!-- ------------------------- DRIVER PANEL ------------------------ -->
+      <section class="panel" id="panel-driver">
+        <div class="page-head">
+          <span class="page-icon">🚗</span>
+          <div class="page-head-copy">
+            <h2>Driver console</h2>
+            <p class="hint">Go online, accept ride offers and complete trips safely.</p>
+          </div>
+        </div>
+
+        <div class="card session-card hidden" id="dr-session">
+          <div class="session-head">
+            <div>
+              <strong id="dr-name">—</strong>
+              <span class="badge" id="dr-badge">offline</span>
+            </div>
+          </div>
+          <p class="hint mono" id="dr-id">driver_id: —</p>
+
+          <div class="row gap">
+            <button class="btn primary grow" id="dr-toggle" type="button">Go online</button>
+          </div>
+
+          <div class="card inner">
+            <h3>Location sharing</h3>
+            <p class="hint">Share your device location while online so dispatch can track your position.</p>
+            <div class="row gap">
+              <button class="btn small" id="dr-real-gps" type="button">Use device GPS</button>
+              <button class="btn small" id="dr-send-location" type="button">Send GPS now</button>
+            </div>
+            <p class="mono" id="dr-coords">lat —, lng —</p>
+          </div>
+
+          <div class="ride-card hidden" id="dr-offer">
+            <h3>New ride offer</h3>
+            <p id="dr-offer-rider">—</p>
+            <dl class="kv small">
+              <div><dt>Pickup</dt><dd id="dr-offer-pickup">—</dd></div>
+              <div><dt>Destination</dt><dd id="dr-offer-dropoff">—</dd></div>
+              <div><dt>Distance</dt><dd id="dr-offer-distance">—</dd></div>
+              <div><dt>Fare</dt><dd id="dr-offer-fare">—</dd></div>
+            </dl>
+            <div class="row gap">
+              <button class="btn primary grow" id="dr-accept" type="button">Accept</button>
+              <button class="btn danger grow" id="dr-decline" type="button">Decline</button>
+            </div>
+          </div>
+
+          <div class="ride-card hidden" id="dr-active">
+            <h3>Active ride</h3>
+            <p id="dr-active-rider">—</p>
+            <p class="badge" id="dr-active-stage">assigned</p>
+            <div class="row gap">
+              <button class="btn grow" id="dr-arrived" type="button">Mark arrived</button>
+              <button class="btn primary grow" id="dr-start" type="button">Start ride</button>
+            </div>
+            <div class="row gap">
+              <button class="btn success grow" id="dr-complete" type="button">Complete ride</button>
+              <button class="btn danger grow" id="dr-cancel" type="button">Cancel</button>
+            </div>
+          </div>
+
+          <h3>Ride history</h3>
+          <ul class="list" id="dr-history"></ul>
+        </div>
+      </section>
+
+      <!-- -------------------------- ADMIN PANEL ------------------------ -->
+      <section class="panel" id="panel-admin">
+        <div class="page-head">
+          <span class="page-icon">🛡️</span>
+          <div class="page-head-copy">
+            <h2>Admin console</h2>
+            <p class="hint">Accounts, drivers, rides and the full audit trail.</p>
+          </div>
+        </div>
+
+        <div class="card session-card hidden" id="ad-session">
+          <div class="session-head">
+            <div><strong id="ad-name">—</strong><span class="badge" id="ad-badge">admin</span></div>
+          </div>
+
+          <div class="stat-row" id="ad-stats"></div>
+
+          <div class="subtabs" id="ad-subtabs">
+            <button class="subtab is-active" data-table="users" type="button">Users</button>
+            <button class="subtab" data-table="drivers" type="button">Drivers</button>
+            <button class="subtab" data-table="rides" type="button">Rides</button>
+            <button class="subtab" data-table="applications" type="button">Applications</button>
+            <button class="subtab" data-table="logs" type="button">System logs</button>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" id="ad-table">
+              <thead id="ad-thead"></thead>
+              <tbody id="ad-tbody"></tbody>
+            </table>
+          </div>
+
+          <form class="card inner" id="ad-create-form" autocomplete="off">
+            <h3>Create account</h3>
+            <div class="row gap admin-create-fields">
+              <input id="ad-new-name" placeholder="Full name" required />
+              <input id="ad-new-phone" placeholder="Phone number" required />
+              <input id="ad-new-password" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" minlength="8" maxlength="128" required />
+            </div>
+            <div class="row gap admin-create-driver-fields">
+              <select id="ad-new-role">
+                <option value="user">user</option>
+                <option value="driver" selected>driver</option>
+                <option value="operator">operator</option>
+                <option value="admin">admin</option>
+              </select>
+              <input id="ad-new-vehicle" placeholder="Vehicle model (driver)" />
+              <input id="ad-new-plate" placeholder="License plate (driver)" />
+            </div>
+            <button class="btn primary small" type="submit">Create</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- ---------------------- SHARED EVENT LOG ----------------------- -->
+      <section class="card log-card">
+        <h3>Realtime event log</h3>
+        <ul class="log" id="event-log"></ul>
+      </section>
+    </aside>
+
+    <!-- ============================= MAP =============================== -->
+    <section class="map-wrap">
+      <div id="map"></div>
+
+      <div class="map-hud">
+        <span class="hud-item"><i class="swatch pickup"></i> pickup</span>
+        <span class="hud-item"><i class="swatch dropoff"></i> destination</span>
+        <span class="hud-item"><i class="swatch driver-online"></i> driver online</span>
+        <span class="hud-item"><i class="swatch driver-active"></i> driver active</span>
+        <span class="hud-item"><i class="swatch route"></i> route</span>
+      </div>
+
+      <div class="legend" id="map-legend">Tashkent · 41.2995, 69.2401</div>
+      <div class="drop-overlay" id="drop-overlay">Drop on the highlighted driver</div>
+    </section>
+    </div><!-- /#console-layout -->
+
+  </main>
+
+  <!-- ============================ AUTH MODAL ========================== -->
+  <div class="modal-backdrop hidden" id="auth-modal">
+    <section class="modal auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <div class="auth-modal-head">
+        <div>
+          <h2 id="auth-title">Welcome to TBRide</h2>
+          <p class="hint" id="auth-description">Log in to continue to your console.</p>
+        </div>
+        <button class="btn ghost small" id="auth-close" type="button" aria-label="Close">✕</button>
+      </div>
+      <div class="auth-mode-tabs" role="tablist" aria-label="Account access">
+        <button class="btn auth-mode is-active" id="auth-login-mode" type="button" role="tab" aria-selected="true">Log In</button>
+        <button class="btn auth-mode" id="auth-signup-mode" type="button" role="tab" aria-selected="false">Sign Up</button>
+      </div>
+      <div id="auth-login-content">
+        <div class="auth-role-tabs" role="group" aria-label="Choose your role">
+          <button class="btn auth-role" data-auth-role="user" type="button">Rider</button>
+          <button class="btn auth-role" data-auth-role="driver" type="button">Driver</button>
+          <button class="btn auth-role" data-auth-role="operator" type="button">Operator</button>
+          <button class="btn auth-role" data-auth-role="admin" type="button">Admin</button>
+        </div>
+        <form class="auth-form" id="rider-login-form" autocomplete="off" data-login-role="user">
+          <label for="rider-phone">Phone number</label>
+          <input id="rider-phone" name="phone_number" type="tel" autocomplete="tel" placeholder="Phone number" required />
+          <label for="rider-password">Password</label>
+          <input id="rider-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required />
+          <button class="btn primary" type="submit">Log In</button>
+        </form>
+        <form class="auth-form hidden" id="dr-login-form" autocomplete="off" data-login-role="driver">
+          <label for="dr-phone">Driver phone number</label>
+          <input id="dr-phone" name="phone_number" type="tel" autocomplete="tel" placeholder="Phone number" required />
+          <label for="dr-password">Password</label>
+          <input id="dr-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required />
+          <button class="btn primary" type="submit">Log In</button>
+        </form>
+        <form class="auth-form hidden" id="op-login-form" autocomplete="off" data-login-role="operator">
+          <label for="op-phone">Operator phone number</label>
+          <input id="op-phone" name="phone_number" type="tel" autocomplete="tel" placeholder="Phone number" required />
+          <label for="op-password">Password</label>
+          <input id="op-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required />
+          <button class="btn primary" type="submit">Log In</button>
+        </form>
+        <form class="auth-form hidden" id="ad-login-form" autocomplete="off" data-login-role="admin">
+          <label for="ad-phone">Administrator phone number</label>
+          <input id="ad-phone" name="phone_number" type="tel" autocomplete="tel" placeholder="Phone number" required />
+          <label for="ad-password">Password</label>
+          <input id="ad-password" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" required />
+          <button class="btn primary" type="submit">Log In</button>
+        </form>
+      </div>
+      <form class="auth-form hidden" id="rider-signup-form" autocomplete="on">
+        <label for="rider-signup-name">Full name</label>
+        <input id="rider-signup-name" name="full_name" autocomplete="name" minlength="2" maxlength="120" required />
+        <label for="rider-signup-phone">Phone number</label>
+        <input id="rider-signup-phone" name="phone_number" type="tel" autocomplete="tel" placeholder="Phone number" minlength="7" maxlength="21" required />
+        <label for="rider-signup-password">Password</label>
+        <input id="rider-signup-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required />
+        <p class="hint">Use at least 8 characters. Verify phone ownership before production use.</p>
+        <button class="btn primary" type="submit">Create account</button>
+      </form>
+    </section>
+  </div>
+
+  <!-- ==================== BECOME A DRIVER MODAL ======================= -->
+  <div class="modal-backdrop hidden" id="apply-modal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="apply-title">
+      <form id="apply-form" autocomplete="off">
+        <div class="modal-head">
+          <span class="page-icon">🚗</span>
+          <div>
+            <h2 id="apply-title">Become a Driver</h2>
+            <p class="hint">Send your details to the operators — we review every application by hand.</p>
+          </div>
+        </div>
+
+        <label for="apply-name">Full name</label>
+        <input id="apply-name" name="full_name" minlength="2" maxlength="120" required />
+
+        <label for="apply-phone">Phone number</label>
+        <input id="apply-phone" name="phone_number" type="tel" placeholder="Phone number" required />
+
+        <label for="apply-vehicle">Vehicle model</label>
+        <input id="apply-vehicle" name="vehicle_model" placeholder="Chevrolet Cobalt" minlength="2" maxlength="80" required />
+
+        <label for="apply-plate">License plate</label>
+        <input id="apply-plate" name="license_plate" placeholder="01A777BC" minlength="2" maxlength="24" required />
+
+        <label for="apply-note">Message (optional)</label>
+        <textarea id="apply-note" name="note" rows="3" maxlength="500" placeholder="Tell us about your driving experience"></textarea>
+
+        <div class="modal-actions">
+          <button class="btn ghost" id="apply-cancel" type="button">Cancel</button>
+          <button class="btn primary" type="submit">Send application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/vendor/leaflet/leaflet.js"></script>
+  <script src="/i18n.js?v=production-ui"></script>
+  <script src="/app.js?v=production-ui"></script>
+</body>
+</html>

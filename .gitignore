@@ -1,0 +1,19 @@
+# Local credentials and environment files
+.env
+**/.env
+.env.*
+**/.env.*
+!/.env.example
+!/Website/.env.example
+!/telegram-bot/.env.example
+
+# Local database backups
+*_backup_*.sql
+*.dump
+
+# Generated dependencies and build artifacts
+**/node_modules/
+**/target/
+**/.next/
+**/cp.txt
+Website/tsconfig.tsbuildinfo
