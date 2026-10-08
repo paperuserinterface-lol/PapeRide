@@ -1284,6 +1284,11 @@
       ? t('Accept this application? The rider account will become a driver account.')
       : t('Reject this driver application?');
     if (!window.confirm(confirmMessage)) return;
+    $all('[data-application-id]').forEach(function (button) {
+      if (button.getAttribute('data-application-id') === applicationId) {
+        button.disabled = true;
+      }
+    });
     api('/api/admin/applications/' + encodeURIComponent(applicationId) + '/decision', {
       method: 'POST',
       token: session.token,
@@ -1292,7 +1297,7 @@
       toast(
         decision === 'accepted' ? t('Application accepted') : t('Application rejected'),
         decision === 'accepted'
-          ? t('The applicant can now sign in through the Driver console with their existing account.')
+          ? t('The applicant must sign out and sign in again to access the Driver console.')
           : t('The rider account remains unchanged.'),
         decision === 'accepted' ? 'success' : 'warn'
       );
@@ -1300,6 +1305,12 @@
       loadDriverApplications();
     }).catch(function (err) {
       toast(t('Application review failed'), err.message, 'error');
+      $all('[data-application-id]').forEach(function (button) {
+        if (button.getAttribute('data-application-id') === applicationId) {
+          button.disabled = false;
+        }
+      });
+      loadDriverApplications();
     });
   }
 
@@ -1313,7 +1324,15 @@
       return '<th>' + esc(tOr('col.' + c, c)) + '</th>';
     }).join('') + '</tr>';
     body.innerHTML = '';
-    conf.rows(data).forEach(function (row) {
+    var rows = conf.rows(data);
+    if (!rows.length) {
+      var emptyRow = el('tr');
+      emptyRow.innerHTML = '<td colspan="' + conf.columns.length + '" class="table-empty">' +
+        esc(t('No records to show')) + '</td>';
+      body.appendChild(emptyRow);
+      return;
+    }
+    rows.forEach(function (row) {
       var tr = el('tr');
       tr.innerHTML = conf.render(row).map(function (cell) { return '<td>' + cell + '</td>'; }).join('');
       body.appendChild(tr);

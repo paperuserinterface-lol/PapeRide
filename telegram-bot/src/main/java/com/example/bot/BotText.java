@@ -20,9 +20,9 @@ enum BotText {
             "Язык изменён на русский.",
             "Til o'zbek tiliga o'zgartirildi."),
     PROMPT_PICKUP(
-            "📍 *Where should we pick you up?*\n\nShare your location or type an address.",
-            "📍 *Где вас забрать?*\n\nОтправьте геопозицию или введите адрес.",
-            "📍 *Sizni qayerdan olib ketaylik?*\n\nJoylashuvingizni yuboring yoki manzilni yozing."),
+            "📍 *Where should we pick you up?*\n\nShare your current location, or tap 📎 → Location to choose a pin on the map. You can type an address first for a clearer label.",
+            "📍 *Где вас забрать?*\n\nОтправьте своё местоположение или нажмите 📎 → Геопозиция, чтобы выбрать точку на карте. Сначала можно ввести адрес для подписи.",
+            "📍 *Sizni qayerdan olib ketaylik?*\n\nJoriy joylashuvingizni yuboring yoki 📎 → Joylashuv orqali xaritadan nuqta tanlang. Aniq nom ko‘rinishi uchun avval manzilni yozishingiz mumkin."),
     SHARE_LOCATION(
             "📍 Share my location",
             "📍 Отправить геопозицию",
@@ -32,25 +32,25 @@ enum BotText {
             "Отправленная геопозиция",
             "Yuborilgan joylashuv"),
     PICKUP_NOTED(
-            "✍️ Noted: %s\n\nNow tap 📍 Share my location to pin the exact pickup point.",
-            "✍️ Записано: %s\n\nТеперь отправьте геопозицию 📍, чтобы указать точное место посадки.",
-            "✍️ Qayd qilindi: %s\n\nEndi aniq olib ketish joyini belgilash uchun 📍 joylashuvingizni yuboring."),
+            "✍️ Noted: %s\n\nNow share your current location or tap 📎 → Location to pin the pickup point on the map.",
+            "✍️ Записано: %s\n\nТеперь отправьте своё местоположение или нажмите 📎 → Геопозиция, чтобы отметить точку посадки на карте.",
+            "✍️ Qayd qilindi: %s\n\nEndi joriy joylashuvingizni yuboring yoki 📎 → Joylashuv orqali xaritada olib ketish nuqtasini belgilang."),
     DESTINATION_NOTED(
-            "✍️ Noted: %s\n\nNow tap 📍 to share the exact destination point.",
-            "✍️ Записано: %s\n\nТеперь отправьте геопозицию 📍, чтобы указать точное место назначения.",
-            "✍️ Qayd qilindi: %s\n\nEndi aniq manzilni belgilash uchun 📍 joylashuvingizni yuboring."),
+            "✍️ Noted: %s\n\nNow share your location or tap 📎 → Location to pin the destination on the map.",
+            "✍️ Записано: %s\n\nТеперь отправьте геопозицию или нажмите 📎 → Геопозиция, чтобы отметить место назначения на карте.",
+            "✍️ Qayd qilindi: %s\n\nEndi joylashuvingizni yuboring yoki 📎 → Joylashuv orqali xaritada manzilni belgilang."),
     PROMPT_DESTINATION(
-            "📌 *Where do you want to go?*\n\nType the destination address or share a location.",
-            "📌 *Куда вы хотите поехать?*\n\nВведите адрес назначения или отправьте геопозицию.",
-            "📌 *Qayerga bormoqchisiz?*\n\nManzilni yozing yoki joylashuvni yuboring."),
+            "📌 *Where do you want to go?*\n\nShare your location, tap 📎 → Location to choose a map pin, or type the address first for a clearer label.",
+            "📌 *Куда вы хотите поехать?*\n\nОтправьте геопозицию, нажмите 📎 → Геопозиция, чтобы выбрать точку на карте, или сначала введите адрес для подписи.",
+            "📌 *Qayerga bormoqchisiz?*\n\nJoylashuvni yuboring, xaritadan nuqta tanlash uchun 📎 → Joylashuvni bosing yoki aniq nom uchun avval manzilni yozing."),
     LOCATION_OR_ADDRESS(
             "Please send a location or type an address.",
             "Отправьте геопозицию или введите адрес.",
             "Joylashuvni yuboring yoki manzilni yozing."),
     RIDE_SUMMARY(
-            "🚗 *Ride Summary*\n\n🟢 *Pickup:* %s\n🔴 *Destination:* %s\n\nDoes this look right?",
-            "🚗 *Детали поездки*\n\n🟢 *Откуда:* %s\n🔴 *Куда:* %s\n\nВсё верно?",
-            "🚗 *Safar tafsilotlari*\n\n🟢 *Olib ketish:* %s\n🔴 *Manzil:* %s\n\nHammasi to'g'rimi?"),
+            "🚗 Ride Summary\n\n🟢 Pickup: %s\n🔴 Destination: %s\n\nDoes this look right?",
+            "🚗 Детали поездки\n\n🟢 Откуда: %s\n🔴 Куда: %s\n\nВсё верно?",
+            "🚗 Safar tafsilotlari\n\n🟢 Olib ketish: %s\n🔴 Manzil: %s\n\nHammasi to'g'rimi?"),
     PICKUP("Pickup", "Откуда", "Olib ketish"),
     DESTINATION("Destination", "Куда", "Manzil"),
     CONFIRM("✅ Confirm", "✅ Подтвердить", "✅ Tasdiqlash"),
@@ -71,6 +71,14 @@ enum BotText {
             "⚠️ I need both points on the map 📍\n\nSend /request and share your pickup and destination locations.",
             "⚠️ Нужны обе точки на карте 📍\n\nОтправьте /request и поделитесь геопозицией посадки и назначения.",
             "⚠️ Xarita uchun ikkala nuqta ham kerak 📍\n\n/request yuboring va olib ketish hamda manzil joylashuvlarini ulashing."),
+    POINTS_MUST_DIFFER(
+            "⚠️ Pickup and destination are the same point. Send a different destination pin or address.",
+            "⚠️ Точка подачи совпадает с местом назначения. Отправьте другую точку или адрес назначения.",
+            "⚠️ Olib ketish va manzil bir xil nuqta. Boshqa manzil nuqtasi yoki manzilni yuboring."),
+    PENDING_RIDE_REMINDER(
+            "⏳ Your ride is still waiting for a driver. We'll message you as soon as one is assigned.",
+            "⏳ Ваша поездка всё ещё ожидает водителя. Мы сообщим, как только он будет назначен.",
+            "⏳ Safaringiz hali ham haydovchini kutmoqda. Haydovchi tayinlanganda sizga xabar beramiz."),
     RIDE_CONFLICT(
             "⚠️ You already have a ride in progress. Please wait for it to finish.",
             "⚠️ У вас уже есть активная поездка. Дождитесь её завершения.",

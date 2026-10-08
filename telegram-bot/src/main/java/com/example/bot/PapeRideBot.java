@@ -5,16 +5,18 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Location;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Venue;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -68,6 +70,9 @@ public class PapeRideBot extends TelegramLongPollingBot {
     /** ride id -> last status seen by the poller (dedup for notifications). */
     private final Map<String, String> lastKnownStatus = new ConcurrentHashMap<>();
 
+    /** Rides that have already received the one-time pending-ride reminder. */
+    private final Set<String> pendingReminderSent = ConcurrentHashMap.newKeySet();
+
     /** Ride status polling against the website (daemon thread). */
     private final ScheduledExecutorService statusPoller = Executors.newSingleThreadScheduledExecutor(
             runnable -> {
@@ -82,6 +87,7 @@ public class PapeRideBot extends TelegramLongPollingBot {
 
     /** How often the bot asks the website for ride status changes. */
     private static final long POLL_INTERVAL_SECONDS = 10;
+    private static final Duration PENDING_RIDE_REMINDER_AFTER = Duration.ofMinutes(5);
 
     public PapeRideBot(String botUsername, String botToken, WebsiteClient website) {
         this.botUsername = botUsername;
@@ -255,6 +261,25 @@ public class PapeRideBot extends TelegramLongPollingBot {
         return keyboard;
     }
 
+    private Location sharedLocation(Message msg) {
+        if (msg.hasLocation()) {
+            return msg.getLocation();
+        }
+        Venue venue = msg.getVenue();
+        return venue == null ? null : venue.getLocation();
+    }
+
+    private String sharedLocationLabel(Message msg) {
+        Venue venue = msg.getVenue();
+        if (venue == null) {
+            return null;
+        }
+        if (venue.getTitle() != null && !venue.getTitle().isBlank()) {
+            return venue.getTitle();
+        }
+        return venue.getAddress();
+    }
+
     /** Step 1 — ask for pickup location. */
     private void startRideRequest(long chatId) {
         chatRequests.put(chatId, new RideRequest());
@@ -273,11 +298,14 @@ public class PapeRideBot extends TelegramLongPollingBot {
         RideRequest req = chatRequests.get(chatId);
         if (req == null) { resetConversation(chatId); return; }
 
-        if (msg.hasLocation()) {
-            Location loc = msg.getLocation();
+        Location loc = sharedLocation(msg);
+        if (loc != null) {
             req.setPickupLat(loc.getLatitude());
             req.setPickupLon(loc.getLongitude());
-            if (req.getPickupLocation() == null || req.getPickupLocation().isBlank()) {
+            String venueLabel = sharedLocationLabel(msg);
+            if (venueLabel != null && !venueLabel.isBlank()) {
+                req.setPickupLocation(venueLabel);
+            } else if (req.getPickupLocation() == null || req.getPickupLocation().isBlank()) {
                 req.setPickupLocation(text(chatId, BotText.SHARED_LOCATION));
             }
         } else if (msg.hasText()) {
@@ -303,7 +331,7 @@ public class PapeRideBot extends TelegramLongPollingBot {
         message.setChatId(String.valueOf(chatId));
         message.setText(text(chatId, BotText.PROMPT_DESTINATION));
         message.enableMarkdown(true);
-        message.setReplyMarkup(new ReplyKeyboardRemove(true));
+        message.setReplyMarkup(locationKeyboard(chatId));
         executeSafe(message);
     }
 
@@ -312,11 +340,14 @@ public class PapeRideBot extends TelegramLongPollingBot {
         RideRequest req = chatRequests.get(chatId);
         if (req == null) { resetConversation(chatId); return; }
 
-        if (msg.hasLocation()) {
-            Location loc = msg.getLocation();
+        Location loc = sharedLocation(msg);
+        if (loc != null) {
             req.setDestLat(loc.getLatitude());
             req.setDestLon(loc.getLongitude());
-            if (req.getDestination() == null || req.getDestination().isBlank()) {
+            String venueLabel = sharedLocationLabel(msg);
+            if (venueLabel != null && !venueLabel.isBlank()) {
+                req.setDestination(venueLabel);
+            } else if (req.getDestination() == null || req.getDestination().isBlank()) {
                 req.setDestination(text(chatId, BotText.SHARED_LOCATION));
             }
         } else if (msg.hasText()) {
@@ -331,6 +362,12 @@ public class PapeRideBot extends TelegramLongPollingBot {
             return;
         } else {
             send(chatId, text(chatId, BotText.LOCATION_OR_ADDRESS));
+            return;
+        }
+
+        if (req.getPickupLat().equals(req.getDestLat())
+                && req.getPickupLon().equals(req.getDestLon())) {
+            send(chatId, text(chatId, BotText.POINTS_MUST_DIFFER));
             return;
         }
 
@@ -356,7 +393,6 @@ public class PapeRideBot extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(String.valueOf(chatId));
         message.setText(summary);
-        message.enableMarkdown(true);
         message.setReplyMarkup(markup);
         executeSafe(message);
     }
@@ -501,19 +537,28 @@ public class PapeRideBot extends TelegramLongPollingBot {
             long chatId = notifyChatByRider.getOrDefault(telegramUserId, telegramUserId);
             for (WebsiteClient.RideInfo ride : rides) {
                 String previous = lastKnownStatus.get(ride.id());
-                if (ride.status().equals(previous)) {
-                    continue;
+                if (!ride.status().equals(previous)) {
+                    boolean firstSight = previous == null;
+                    lastKnownStatus.put(ride.id(), ride.status());
+                    boolean stillWorking = "assigned".equals(ride.status())
+                            || "in_progress".equals(ride.status());
+                    if (!firstSight || stillWorking) {
+                        String text = statusNotification(chatId, ride);
+                        if (text != null) {
+                            sendPlain(chatId, text);
+                        }
+                    }
                 }
-                boolean firstSight = previous == null;
-                lastKnownStatus.put(ride.id(), ride.status());
-                boolean stillWorking = "assigned".equals(ride.status())
-                        || "in_progress".equals(ride.status());
-                if (firstSight && !stillWorking) {
-                    continue;
+                if (!"pending".equals(ride.status())) {
+                    pendingReminderSent.remove(ride.id());
                 }
-                String text = statusNotification(chatId, ride);
-                if (text != null) {
-                    sendPlain(chatId, text);
+                if ("pending".equals(ride.status())
+                        && ride.createdAt() != null
+                        && Duration.between(ride.createdAt(), Instant.now())
+                                .compareTo(PENDING_RIDE_REMINDER_AFTER) >= 0
+                        && pendingReminderSent.add(ride.id())) {
+                    sendPlain(chatId, text(chatId, BotText.PENDING_RIDE_REMINDER)
+                            + " (" + text(chatId, BotText.BOOKING, shortId(ride.id())) + ")");
                 }
             }
         }

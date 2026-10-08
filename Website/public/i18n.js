@@ -163,6 +163,8 @@
     'Reject application': 'Отклонить заявку',
     'Application accepted': 'Заявка принята',
     'Application rejected': 'Заявка отклонена',
+    'The applicant must sign out and sign in again to access the Driver console.':
+      'Чтобы открыть консоль водителя, заявителю нужно выйти и войти снова.',
     'Application review failed': 'Не удалось обработать заявку',
     'Accept this application? The rider account will become a driver account.':
       'Принять заявку? Аккаунт пассажира станет аккаунтом водителя.',
@@ -308,6 +310,7 @@
     'col.applicant': 'Заявитель',
     'col.note': 'Комментарий',
     'col.actions': 'Действия',
+    'No records to show': 'Нет записей для отображения',
 
     /* misc app strings */
     'status broadcast to the dispatch floor': 'статус отправлен на диспетчерскую',
@@ -473,6 +476,8 @@
     'Reject application': 'Arizani rad etish',
     'Application accepted': 'Ariza qabul qilindi',
     'Application rejected': 'Ariza rad etildi',
+    'The applicant must sign out and sign in again to access the Driver console.':
+      'Haydovchi konsoliga kirish uchun ariza beruvchi tizimdan chiqib, qayta kirishi kerak.',
     'Application review failed': 'Arizani ko‘rib chiqib bo‘lmadi',
     'Accept this application? The rider account will become a driver account.':
       'Ariza qabul qilinsinmi? Yo‘lovchi hisobi haydovchi hisobiga aylanadi.',
@@ -618,6 +623,7 @@
     'col.applicant': 'Ariza beruvchi',
     'col.note': 'Izoh',
     'col.actions': 'Amallar',
+    'No records to show': 'Ko‘rsatish uchun yozuvlar yo‘q',
 
     /* misc app strings */
     'status broadcast to the dispatch floor': 'holat dispetcherlikka yuborildi',
